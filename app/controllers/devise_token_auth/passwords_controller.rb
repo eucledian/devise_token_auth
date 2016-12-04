@@ -108,28 +108,32 @@ module DeviseTokenAuth
     end
 
     def update
-      # make sure user is authorized
-      unless @resource
-        return render_update_error_unauthorized
-      end
+      updated = false
+      reset_limit = nil
+      @resource = resource_class.where({
+        reset_password_token: resource_params[:reset_password_token]
+      }).first
+      if @resource.present?
+        if @resource.reset_password_sent_at.present?
+          reset_limit = (@resource.reset_password_sent_at +
+            Devise.reset_password_within)
+        end
 
-      # make sure account doesn't use oauth2 provider
-      unless @resource.provider == 'email'
-        return render_update_error_password_not_required
-      end
-
-      # ensure that password params were sent
-      unless password_resource_params[:password] and password_resource_params[:password_confirmation]
-        return render_update_error_missing_password
-      end
-
-      if @resource.send(resource_update_method, password_resource_params)
-        @resource.allow_password_change = false
-
-        yield @resource if block_given?
-        return render_update_success
+        if (@resource.present? && (reset_limit.nil? ||
+          (Time.now < reset_limit))
+        )
+          updated = @resource.reset_password(
+            params[:password],
+            params[:password_confirmation]
+          )
+        end
+        if updated
+          render_update_success
+        else
+          render_update_error
+        end
       else
-        return render_update_error
+        render_update_error_unauthorized
       end
     end
 

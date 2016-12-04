@@ -1,5 +1,15 @@
 module DeviseTokenAuth
   class ConfirmationsController < DeviseTokenAuth::ApplicationController
+    # Confirms a given device resource identified by the given
+    # +confirmation_token+ parameter generated in a signup proccess.
+    # If resource is confirmed successfully, an empty HTTP body is returned and
+    # a status code of 200 is returned.
+    # According exceptions are thrown if an invalid +confirmation_token+ is
+    # specified.
+    #
+    # GET /resource/confirmation
+    # @param [String] [confirmation_token] - resource +confirmation_token+
+    # @return [nil] empty response
     def show
       @resource = resource_class.confirm_by_token(params[:confirmation_token])
 
@@ -17,14 +27,7 @@ module DeviseTokenAuth
 
         @resource.save!
 
-        yield @resource if block_given?
-
-        redirect_to(@resource.build_auth_url(params[:redirect_url], {
-          token:                        token,
-          client_id:                    client_id,
-          account_confirmation_success: true,
-          config:                       params[:config]
-        }))
+        render body: nil, status: 200
       else
         raise ActionController::RoutingError.new('Not Found')
       end
